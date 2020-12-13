@@ -1,56 +1,82 @@
-//Create variables here
-var  dog, dogImg, dogHImg;
-var database;
-var foodS = 20, foodStock;
-var milkImg , milk=[],i;
-function preload()
-{
-  //load images here
-  dogImg=loadImage("Dog.png");
-  dogHImg=loadImage("happydog.png");
-  milkImg=loadImage("Milk.png");
+var dog,dogImg,happyDog, database;
+var foodS=20,foodStock;
+var fedTime,lastFed;
+var feed,add;
+var foodObj;
+
+function preload(){
+dogImg=loadImage("Dog.png");
+happyDog=loadImage("happydog.png");
 }
 
 function setup() {
-	database=firebase.database();
-  canvas=createCanvas(1000,800);
+  database=firebase.database();
+  createCanvas(1000,400);
 
-  dog=createSprite(800,400,10,10);
+  foodObj = new Food();
+
+  foodStock=database.ref('Food');
+  foodStock.on("value",readStock);
+
+  dog=createSprite(700,170,150,150);
   dog.addImage(dogImg);
-  dog.scale=0.2;
+  dog.scale=0.15;
 
-  getCount();
-  update(20);
-}
+  feed=createButton("Feed");
+  feed.position(950,65);
+  feed.mousePressed(feedDog);
 
+  add=createButton("Buy");
+  add.position(900,65);
+  add.mousePressed(addFoods);
 
-function draw() { 
-  background(rgb(200,170,140));
-
-  for(i=0;i>=foodS;i++){
-    milk[i]=new Food((20*i)+20,200);
-    milk[i].display();
-  }
-  addMilk();
-}
-
-function addMilk(){
-  if(keyWentDown(UP_ARROW)){
-    milk.push(new Food(milk[milk.length]*100,200));
-  }
-}
-
-
-function getCount(){
-  var foodStock=database.ref('food');
-  foodStock.on("value",function(data){
-      foodS=data.val();
-  });
-}
-function update(count){
   database.ref('/').update({
-      food:count
+    Food:20,
+    FeedTime:0
+
+  })
+
+}
+
+function draw() {
+  background(rgb(46,139,117));
+  foodObj.display();
+
+  fedTime=database.ref('FeedTime');
+  fedTime.on("value",function(data){
+    lastFed=data.val();
+  });
+  fill(255,255,254);
+  textSize(15);
+  if(lastFed>=12){
+    text("Last Feed : "+ lastFed%12 + " PM", 350,30);
+   }else if(lastFed==0){
+     text("Last Feed : 12 AM",350,30);
+   }else{
+     text("Last Feed : "+ lastFed + " AM", 350,30);
+   }
+
+  drawSprites();
+  text("Milk - "+foodS,20,20);
+}
+
+function readStock(data){
+  foodS=data.val();
+  foodObj.updateFoodStock(foodS);
+}
+function feedDog(){
+  dog.addImage(happyDog);
+
+  foodObj.updateFoodStock(foodObj.getFoodStock()-1);
+  database.ref('/').update({
+    Food:foodObj.getFoodStock(),
+    FeedTime:hour()
   })
 }
-
-
+function addFoods(){
+  foodS=foodS+1;
+  database.ref('/').update({
+    Food:foodS
+  })
+  dog.addImage(dogImg);
+}
